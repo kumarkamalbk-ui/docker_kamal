@@ -1,21 +1,25 @@
-name: CI Pipeline
+name: build
 
 on:
   push:
-    branches: ["master"]
+    branches: [ "master" ]
   pull_request:
-    branches: ["master"]
+    branches: [ "master" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
+
+      # STEP 1: Checkout Code
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Build Docker Image
-        run: docker build -t jenkins_test .
+      # STEP 2: Build Docker Image using DEBIAN Dockerfile
+      - name: Build Docker Image (Debian)
+        run: docker build -t jenkins_test -f debian/Dockerfile debian/
 
+      # STEP 3: Run Container (simple test)
       - name: Run Container Test
-        run: docker run --rm jenkins_test echo "Container Built Successfully"
+        run: docker run --rm jenkins_test echo "Docker Image Built Successfully"
