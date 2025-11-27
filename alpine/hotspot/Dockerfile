@@ -18,12 +18,8 @@ RUN apk add --no-cache \
 
 ENV PATH="/opt/jdk-${JAVA_VERSION}/bin:${PATH}"
 
-# Generate smaller java runtime without unneeded files
-# for now we include the full module path to maintain compatibility
-# while still saving space (approx 200mb from the full distribution)
 RUN case "$(jlink --version 2>&1)" in \
       "17."*) set -- "--compress=2" ;; \
-      # the compression argument is different for JDK21
       "21."*) set -- "--compress=zip-6" ;; \
       *) echo "ERROR: unmanaged jlink version pattern" && exit 1 ;; \
     esac; \
@@ -71,35 +67,21 @@ ENV JENKINS_HOME=$JENKINS_HOME
 ENV JENKINS_SLAVE_AGENT_PORT=${agent_port}
 ENV REF=$REF
 
-# Jenkins is run with user `jenkins`, uid = 1000
-# If you bind mount a volume from the host or a data container,
-# ensure you use the same uid
 RUN mkdir -p $JENKINS_HOME \
   && chown ${uid}:${gid} $JENKINS_HOME \
   && addgroup -g ${gid} ${group} \
   && adduser -h "$JENKINS_HOME" -u ${uid} -G ${group} -s /bin/bash -D ${user}
 
-# Jenkins home directory is a volume, so configuration and build history
-# can be persisted and survive image upgrades
 VOLUME $JENKINS_HOME
 
-# $REF (defaults to `/usr/share/jenkins/ref/`) contains all reference configuration we want
-# to set on a fresh new installation. Use it to bundle additional plugins
-# or config file with your custom jenkins Docker image.
 RUN mkdir -p ${REF}/init.groovy.d
 
-# jenkins version being bundled in this docker image
 ARG JENKINS_VERSION
 ENV JENKINS_VERSION=${JENKINS_VERSION:-2.504}
 
-# jenkins.war checksum, download will be validated using it
 ARG WAR_SHA=efc91d6be8d79dd078e7f930fc4a5f135602d0822a5efe9091808fdd74607d32
-
-# Can be used to customize where jenkins.war get downloaded from
 ARG WAR_URL=https://get.jenkins.io/war/${JENKINS_VERSION}/jenkins.war
 
-# could use ADD but this one does not check Last-Modified header neither does it allow to control checksum
-# see https://github.com/docker/docker/issues/8331
 RUN curl -fsSL ${WAR_URL} -o /usr/share/jenkins/jenkins.war \
   && echo "${WAR_SHA}  /usr/share/jenkins/jenkins.war" >/tmp/war_sha \
   && sha256sum -c --strict /tmp/war_sha \
@@ -117,10 +99,7 @@ RUN curl -fsSL ${PLUGIN_CLI_URL} -o /opt/jenkins-plugin-manager.jar \
   && sha256sum -c --strict /tmp/war_sha \
   && rm -f /tmp/war_sha
 
-# for main web interface:
 EXPOSE ${http_port}
-
-# will be used by attached agents:
 EXPOSE ${agent_port}
 
 ENV COPY_REFERENCE_FILE_LOG=$JENKINS_HOME/copy_reference_file.log
@@ -137,7 +116,6 @@ COPY jenkins-plugin-cli.sh /bin/jenkins-plugin-cli
 
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/jenkins.sh"]
 
-# metadata labels
 LABEL \
     org.opencontainers.image.vendor="Jenkins project" \
     org.opencontainers.image.title="Official Jenkins Docker image" \
