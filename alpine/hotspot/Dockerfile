@@ -1,7 +1,9 @@
 # Base image
 FROM alpine:3.22.2
 
-# 1. Define the desired JDK version (Required for the script to work)
+# 🟢 FIX: Define the required JDK version 
+# This variable is needed by your jdk-download.sh script to form the API URL.
+# Setting it to 21 (a current LTS version). Change this number if you need a different JDK.
 ARG JDK_VERSION=21 
 ENV JDK_VERSION=$JDK_VERSION 
 
@@ -13,7 +15,6 @@ COPY jdk-download-url.sh /usr/bin/jdk-download-url.sh
 RUN chmod +x /usr/bin/jdk-download.sh /usr/bin/jdk-download-url.sh
 
 # Install dependencies and run JDK download script
-# ❗ ENSURE ALL SPACING HERE IS A STANDARD SPACE ❗
 RUN apk add --no-cache \
         ca-certificates \
         jq \
@@ -23,4 +24,8 @@ RUN apk add --no-cache \
 
 # Copy Jenkins support scripts
 COPY jenkins.sh /usr/bin/jenkins.sh
-# ... (rest of your Dockerfile)
+COPY jenkins-plugin-cli.sh /usr/bin/jenkins-plugin-cli.sh
+COPY jenkins-support /usr/bin/jenkins-support
+
+# Make Jenkins scripts executable
+RUN chmod +x /usr/bin/jenkins.sh /usr/bin/jenkins-plugin-cli.sh
